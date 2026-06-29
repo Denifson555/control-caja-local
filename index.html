@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Control de Caja Diaria</title>
+  <meta name="description" content="Sistema de control de flujo de caja diario para locales comerciales. Registra ingresos, egresos y consulta el historial de cierres." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="header-brand">
+        <span class="header-icon">💰</span>
+        <div>
+          <h1 class="header-title">Control de Caja</h1>
+          <p class="header-subtitle">Flujo Diario</p>
+        </div>
+      </div>
+      <div class="header-date" id="headerDate"></div>
+    </div>
+  </header>
+  <main class="main-layout">
+    <section class="panel panel-form" aria-labelledby="formPanelTitle">
+      <div class="panel-header">
+        <h2 id="formPanelTitle" class="panel-title"><span class="panel-title-icon">📋</span> Cierre del Día</h2>
+        <span class="panel-badge" id="todayDate"></span>
+      </div>
+      <form id="cashForm" novalidate>
+        <fieldset class="form-section income-section">
+          <legend class="section-legend income-legend"><span class="legend-dot income-dot"></span> Ingresos</legend>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" for="ventasEfectivo">Ventas en Efectivo</label>
+              <div class="input-wrap"><span class="input-prefix">$</span><input class="form-input income-input" type="number" id="ventasEfectivo" name="ventasEfectivo" min="0" step="0.01" placeholder="0.00" /></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="cajaChica">Caja Chica</label>
+              <div class="input-wrap"><span class="input-prefix">$</span><input class="form-input income-input" type="number" id="cajaChica" name="cajaChica" min="0" step="0.01" placeholder="0.00" /></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="cajaFuerte">Caja Fuerte (Billetes grandes)</label>
+              <div class="input-wrap"><span class="input-prefix">$</span><input class="form-input income-input" type="number" id="cajaFuerte" name="cajaFuerte" min="0" step="0.01" placeholder="0.00" /></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="transferencias">Transferencias</label>
+              <div class="input-wrap"><span class="input-prefix">$</span><input class="form-input income-input" type="number" id="transferencias" name="transferencias" min="0" step="0.01" placeholder="0.00" /></div>
+            </div>
+          </div>
+          <div class="section-total income-total">
+            <span>Total Ingresos</span>
+            <span class="total-value income-value" id="totalIngresos">$ 0.00</span>
+          </div>
+        </fieldset>
+        <fieldset class="form-section expense-section">
+          <legend class="section-legend expense-legend"><span class="legend-dot expense-dot"></span> Egresos</legend>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" for="pagoProveedores">Pago a Proveedores</label>
+              <div class="input-wrap"><span class="input-prefix">$</span><input class="form-input expense-input" type="number" id="pagoProveedores" name="pagoProveedores" min="0" step="0.01" placeholder="0.00" /></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="gastosPersonales">Gastos Personales</label>
+              <div class="input-wrap"><span class="input-prefix">$</span><input class="form-input expense-input" type="number" id="gastosPersonales" name="gastosPersonales" min="0" step="0.01" placeholder="0.00" /></div>
+            </div>
+          </div>
+          <div class="section-total expense-total">
+            <span>Total Egresos</span>
+            <span class="total-value expense-value" id="totalEgresos">$ 0.00</span>
+          </div>
+        </fieldset>
+        <div class="balance-card" id="balanceCard">
+          <div class="balance-label">Balance Neto del Día</div>
+          <div class="balance-amount" id="balanceNeto">$ 0.00</div>
+          <div class="balance-hint" id="balanceHint">Ingresa los montos para calcular</div>
+        </div>
+        <div class="form-group notes-group">
+          <label class="form-label" for="notas">Notas adicionales</label>
+          <textarea class="form-textarea" id="notas" name="notas" rows="3" placeholder="Observaciones, detalles del día, proveedores visitados, etc."></textarea>
+        </div>
+        <div class="security-box">
+          <label class="toggle-label" for="verifiedToggle">
+            <input class="toggle-input" type="checkbox" id="verifiedToggle" />
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            <span class="toggle-text">He verificado los montos de hoy</span>
+          </label>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-secondary" type="button" id="clearFormBtn">🗑️ Limpiar</button>
+          <button class="btn btn-primary" type="submit" id="saveBtn" disabled>💾 Confirmar y Guardar Cierre</button>
+        </div>
+      </form>
+    </section>
+    <section class="panel panel-history" aria-labelledby="historyPanelTitle">
+      <div class="panel-header">
+        <h2 id="historyPanelTitle" class="panel-title"><span class="panel-title-icon">📊</span> Historial</h2>
+        <button class="btn btn-export" id="exportCsvBtn" title="Exportar historial en CSV">⬇️ Exportar CSV</button>
+      </div>
+      <div class="summary-grid">
+        <div class="summary-card income-card">
+          <div class="summary-card-icon">📈</div>
+          <div class="summary-card-label">Total Ingresos Históricos</div>
+          <div class="summary-card-value income-value" id="sumIngresos">$ 0.00</div>
+        </div>
+        <div class="summary-card expense-card">
+          <div class="summary-card-icon">📉</div>
+          <div class="summary-card-label">Total Egresos Históricos</div>
+          <div class="summary-card-value expense-value" id="sumEgresos">$ 0.00</div>
+        </div>
+        <div class="summary-card balance-summary-card">
+          <div class="summary-card-icon">🏦</div>
+          <div class="summary-card-label">Balance Global Acumulado</div>
+          <div class="summary-card-value" id="sumBalance">$ 0.00</div>
+        </div>
+      </div>
+      <div class="history-table-wrap">
+        <div class="history-empty" id="historyEmpty">
+          <span class="history-empty-icon">📭</span>
+          <p>Aún no hay cierres registrados.</p>
+          <p>Guarda tu primer cierre del día para comenzar.</p>
+        </div>
+        <div class="table-responsive" id="tableWrapper" hidden>
+          <table class="history-table" id="historyTable">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th class="income-col">Ingresos</th>
+                <th class="expense-col">Egresos</th>
+                <th class="balance-col">Balance</th>
+                <th>Notas</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody id="historyBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+  <div class="toast" id="toast" role="alert" aria-live="polite"></div>
+  <div class="modal-overlay" id="deleteModal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-icon">⚠️</div>
+      <h3 class="modal-title" id="modalTitle">¿Eliminar este registro?</h3>
+      <p class="modal-body">Esta acción no se puede deshacer.</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="cancelDeleteBtn">Cancelar</button>
+        <button class="btn btn-danger" id="confirmDeleteBtn">Sí, eliminar</button>
+      </div>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
