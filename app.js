@@ -1,12 +1,14 @@
 /**
  * Control de Caja Diaria — app.js
- * Lógica completa: cálculos en tiempo real, localStorage, historial, CSV export
+ * Lógica financiera corregida y exportación a Excel
  */
 'use strict';
+
 /* ═══════════════════════════════════════════════
    CONSTANTS & STORAGE KEY
 ═══════════════════════════════════════════════ */
 const STORAGE_KEY = 'controlCaja_v1';
+
 /* ═══════════════════════════════════════════════
    DOM REFERENCES
 ═══════════════════════════════════════════════ */
@@ -42,6 +44,7 @@ const els = {
   tableWrapper:     document.getElementById('tableWrapper'),
   historyBody:      document.getElementById('historyBody'),
   exportCsvBtn:     document.getElementById('exportCsvBtn'),
+  exportExcelBtn:   document.getElementById('exportExcelBtn'), // NUEVO BOTÓN
   // Toast
   toast:            document.getElementById('toast'),
   // Modal
@@ -49,12 +52,14 @@ const els = {
   cancelDeleteBtn:  document.getElementById('cancelDeleteBtn'),
   confirmDeleteBtn: document.getElementById('confirmDeleteBtn'),
 };
+
 /* ═══════════════════════════════════════════════
    STATE
 ═══════════════════════════════════════════════ */
 let records = [];
 let pendingDeleteId = null;
 let toastTimer = null;
+
 /* ═══════════════════════════════════════════════
    UTILITIES
 ═══════════════════════════════════════════════ */
@@ -73,6 +78,7 @@ const formatDateShort = (isoStr) => {
   return d.toLocaleDateString('es-CO', { year: 'numeric', month: '2-digit', day: '2-digit' });
 };
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
 /* ═══════════════════════════════════════════════
    DATE DISPLAY
 ═══════════════════════════════════════════════ */
@@ -84,74 +90,96 @@ function updateDateDisplay() {
   els.headerDate.textContent = longDate.charAt(0).toUpperCase() + longDate.slice(1);
   els.todayDate.textContent = shortDate;
 }
+
 /* ═══════════════════════════════════════════════
-   REAL-TIME CALCULATIONS
+   REAL-TIME CALCULATIONS (Lógica Corregida)
 ═══════════════════════════════════════════════ */
 function recalculate() {
-  const ingresos =
-    numVal(els.ventasEfectivo) +
-    numVal(els.cajaChica) +
-    numVal(els.cajaFuerte) +
-    numVal(els.transferencias);
-  const egresos =
-    numVal(els.pagoProveedores) +
-    numVal(els.gastosPersonales);
-  const balance = ingresos - egresos;
+  const vEfectivo = numVal(els.ventasEfectivo);
+  const cChica    = numVal(els.cajaChica);
+  const cFuerte   = numVal(els.cajaFuerte);
+  const transf    = numVal(els.transferencias);
+  
+  const pProv     = numVal(els.pagoProveedores);
+  const gPerson   = numVal(els.gastosPersonales);
+
+  const ingresos  = vEfectivo + cChica + cFuerte + transf;
+  const egresos   = pProv + gPerson;
+  
+  // PARCHE 1: Cada indicador tiene su propia fórmula independiente
+  const ventasDia    = vEfectivo + transf; // Solo operativos
+  const guardadoNeto = cFuerte - egresos;  // Fondo MENOS pagos
+  const balance      = ingresos - egresos;
+
   const hasData = ingresos > 0 || egresos > 0;
+
   // Update display
   els.totalIngresos.textContent = formatCurrency(ingresos);
   els.totalEgresos.textContent  = formatCurrency(egresos);
   els.balanceNeto.textContent   = formatCurrency(balance);
+
   // Balance card state
   els.balanceCard.classList.remove('positive', 'negative');
   if (hasData) {
     els.balanceCard.classList.add(balance >= 0 ? 'positive' : 'negative');
-    els.balanceHint.textContent = balance >= 0
-      ? '✅ El día cierra en positivo'
-      : '⚠️ El día cierra con pérdidas';
+    // Pista visual que refleja las matemáticas reales
+    els.balanceHint.textContent = `✅ Ventas del día: ${formatCurrency(ventasDia)} · Guardado neto: ${formatCurrency(guardadoNeto)}`;
   } else {
     els.balanceHint.textContent = 'Ingresa los montos para calcular';
   }
 }
+
 /* ═══════════════════════════════════════════════
    DOUBLE SECURITY — SAVE BUTTON
 ═══════════════════════════════════════════════ */
 function handleVerifiedToggle() {
   els.saveBtn.disabled = !els.verifiedToggle.checked;
 }
+
 /* ═══════════════════════════════════════════════
-   SAVE RECORD
+   SAVE RECORD (Variables protegidas)
 ═══════════════════════════════════════════════ */
 function saveRecord(e) {
   e.preventDefault();
-  const ingresos =
-    numVal(els.ventasEfectivo) +
-    numVal(els.cajaChica) +
-    numVal(els.cajaFuerte) +
-    numVal(els.transferencias);
-  const egresos =
-    numVal(els.pagoProveedores) +
-    numVal(els.gastosPersonales);
+  
+  const vEfectivo = numVal(els.ventasEfectivo);
+  const cChica    = numVal(els.cajaChica);
+  const cFuerte   = numVal(els.cajaFuerte);
+  const transf    = numVal(els.transferencias);
+  const pProv     = numVal(els.pagoProveedores);
+  const gPerson   = numVal(els.gastosPersonales);
+
+  const ingresos = vEfectivo + cChica + cFuerte + transf;
+  const egresos  = pProv + gPerson;
+  
+  // PARCHE 2: Cálculos anexos sin romper las variables antiguas
+  const ventasDia    = vEfectivo + transf;
+  const guardadoNeto = cFuerte - egresos;
+
   const record = {
-    id:              generateId(),
-    createdAt:       new Date().toISOString(),
-    ventasEfectivo:  numVal(els.ventasEfectivo),
-    cajaChica:       numVal(els.cajaChica),
-    cajaFuerte:      numVal(els.cajaFuerte),
-    transferencias:  numVal(els.transferencias),
-    pagoProveedores: numVal(els.pagoProveedores),
-    gastosPersonales:numVal(els.gastosPersonales),
-    totalIngresos:   ingresos,
-    totalEgresos:    egresos,
-    balanceNeto:     ingresos - egresos,
-    notas:           els.notas.value.trim(),
+    id:               generateId(),
+    createdAt:        new Date().toISOString(),
+    ventasEfectivo:   vEfectivo,
+    cajaChica:        cChica,
+    cajaFuerte:       cFuerte,
+    transferencias:   transf,
+    pagoProveedores:  pProv,
+    gastosPersonales: gPerson,
+    totalIngresos:    ingresos,
+    totalEgresos:     egresos,
+    balanceNeto:      ingresos - egresos,
+    ventasDia:        ventasDia,      // Nuevo dato
+    guardadoNeto:     guardadoNeto,   // Nuevo dato
+    notas:            els.notas.value.trim(),
   };
+
   records.unshift(record);
   persistData();
   renderHistory();
   resetForm();
   showToast('✅ Cierre guardado correctamente', 'success');
 }
+
 /* ═══════════════════════════════════════════════
    FORM RESET
 ═══════════════════════════════════════════════ */
@@ -167,12 +195,14 @@ function resetForm() {
   els.saveBtn.disabled       = true;
   recalculate();
 }
+
 /* ═══════════════════════════════════════════════
    PERSIST TO LOCALSTORAGE
 ═══════════════════════════════════════════════ */
 function persistData() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
 }
+
 function loadData() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -181,6 +211,7 @@ function loadData() {
     records = [];
   }
 }
+
 /* ═══════════════════════════════════════════════
    RENDER HISTORY
 ═══════════════════════════════════════════════ */
@@ -189,19 +220,24 @@ function renderHistory() {
   const totI = records.reduce((s, r) => s + r.totalIngresos, 0);
   const totE = records.reduce((s, r) => s + r.totalEgresos, 0);
   const totB = totI - totE;
+  
   els.sumIngresos.textContent = formatCurrency(totI);
   els.sumEgresos.textContent  = formatCurrency(totE);
   els.sumBalance.textContent  = formatCurrency(totB);
+  
   // Color balance summary
   els.sumBalance.style.color = totB >= 0 ? 'var(--income-light)' : 'var(--expense-light)';
+  
   // Table visibility
   if (records.length === 0) {
     els.historyEmpty.hidden  = false;
     els.tableWrapper.hidden  = true;
     return;
   }
+  
   els.historyEmpty.hidden = true;
   els.tableWrapper.hidden = false;
+  
   // Build rows
   els.historyBody.innerHTML = '';
   records.forEach((r, idx) => {
@@ -221,6 +257,7 @@ function renderHistory() {
     els.historyBody.appendChild(tr);
   });
 }
+
 /* ═══════════════════════════════════════════════
    DELETE RECORD
 ═══════════════════════════════════════════════ */
@@ -228,10 +265,12 @@ function requestDelete(id) {
   pendingDeleteId = id;
   els.deleteModal.hidden = false;
 }
+
 function cancelDelete() {
   pendingDeleteId = null;
   els.deleteModal.hidden = true;
 }
+
 function confirmDelete() {
   if (!pendingDeleteId) return;
   records = records.filter(r => r.id !== pendingDeleteId);
@@ -241,8 +280,9 @@ function confirmDelete() {
   renderHistory();
   showToast('🗑️ Registro eliminado', 'error');
 }
+
 /* ═══════════════════════════════════════════════
-   CSV EXPORT
+   CSV EXPORT (Viejo) & EXCEL EXPORT (Nuevo)
 ═══════════════════════════════════════════════ */
 function exportCSV() {
   if (records.length === 0) {
@@ -267,18 +307,54 @@ function exportCSV() {
     r.balanceNeto,
     `"${(r.notas || '').replace(/"/g, '""')}"`
   ]);
-  const csvContent = '\uFEFF' + // BOM for Excel
-    [headers, ...rows].map(row => row.join(';')).join('\n');
+  const csvContent = '\uFEFF' + [headers, ...rows].map(row => row.join(';')).join('\n');
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url  = URL.createObjectURL(blob);
   const link = document.createElement('a');
   const date = new Date().toLocaleDateString('es-CO').replace(/\//g, '-');
   link.href     = url;
-  link.download = `control-caja-${date}.csv`;
+  link.download = `control-caja-completo-${date}.csv`;
   link.click();
   URL.revokeObjectURL(url);
   showToast('📥 CSV exportado correctamente', 'success');
 }
+
+// PARCHE 3: Exportación a Excel con columnas exactas
+function exportExcel() {
+  if (records.length === 0) {
+    showToast('⚠️ No hay registros para exportar', 'info');
+    return;
+  }
+  
+  const headers = ['Fecha', 'Caja', 'Guardado', 'Transferencias', 'Proveedores', 'Gastos', 'Ventas', 'Notas'];
+  
+  const rows = records.map(r => {
+    // Si es un registro viejo que no tiene ventasDia guardado, lo calcula al vuelo
+    const ventasDia = r.ventasDia !== undefined ? r.ventasDia : (r.ventasEfectivo + r.transferencias);
+    return [
+      formatDate(r.createdAt),
+      r.ventasEfectivo,
+      r.cajaFuerte,
+      r.transferencias,
+      r.pagoProveedores,
+      r.gastosPersonales,
+      ventasDia,
+      `"${(r.notas || '').replace(/"/g, '""')}"`
+    ];
+  });
+
+  const csvContent = '\uFEFF' + [headers, ...rows].map(row => row.join(';')).join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  const date = new Date().toLocaleDateString('es-CO').replace(/\//g, '-');
+  link.href     = url;
+  link.download = `Cierre_Historial_${date}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+  showToast('📊 Excel exportado correctamente', 'success');
+}
+
 /* ═══════════════════════════════════════════════
    TOAST
 ═══════════════════════════════════════════════ */
@@ -290,6 +366,7 @@ function showToast(message, type = 'info') {
     els.toast.classList.remove('show');
   }, 3200);
 }
+
 /* ═══════════════════════════════════════════════
    ESCAPE HTML
 ═══════════════════════════════════════════════ */
@@ -301,40 +378,43 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
+
 /* ═══════════════════════════════════════════════
    EVENT LISTENERS
 ═══════════════════════════════════════════════ */
 function bindEvents() {
-  // Real-time calculation on all number inputs
   const numInputs = document.querySelectorAll('.form-input[type="number"]');
   numInputs.forEach(inp => inp.addEventListener('input', recalculate));
-  // Security toggle → enable/disable save
+  
   els.verifiedToggle.addEventListener('change', handleVerifiedToggle);
-  // Form submit → save
   document.getElementById('cashForm').addEventListener('submit', saveRecord);
-  // Clear form
+  
   els.clearFormBtn.addEventListener('click', () => {
     resetForm();
     showToast('🗑️ Formulario limpiado', 'info');
   });
-  // Export CSV
-  els.exportCsvBtn.addEventListener('click', exportCSV);
-  // Delete buttons (event delegation on tbody)
+  
+  els.exportCsvBtn?.addEventListener('click', exportCSV);
+  
+  // Enlace del nuevo botón de Excel
+  els.exportExcelBtn?.addEventListener('click', exportExcel);
+  
   els.historyBody.addEventListener('click', (e) => {
     const btn = e.target.closest('.btn-delete');
     if (btn) requestDelete(btn.dataset.id);
   });
-  // Modal controls
+  
   els.cancelDeleteBtn.addEventListener('click',  cancelDelete);
   els.confirmDeleteBtn.addEventListener('click', confirmDelete);
   els.deleteModal.addEventListener('click', (e) => {
     if (e.target === els.deleteModal) cancelDelete();
   });
-  // Keyboard: ESC closes modal
+  
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !els.deleteModal.hidden) cancelDelete();
   });
 }
+
 /* ═══════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════ */
@@ -344,7 +424,7 @@ function init() {
   renderHistory();
   recalculate();
   bindEvents();
-  // Refresh clock label every minute
   setInterval(updateDateDisplay, 60_000);
 }
+
 document.addEventListener('DOMContentLoaded', init);
