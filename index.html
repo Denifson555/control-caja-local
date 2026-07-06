@@ -97,7 +97,12 @@
     <section class="panel panel-history" aria-labelledby="historyPanelTitle">
       <div class="panel-header">
         <h2 id="historyPanelTitle" class="panel-title"><span class="panel-title-icon">📊</span> Historial</h2>
-        <button class="btn btn-export" id="exportCsvBtn" title="Exportar historial en CSV">⬇️ Exportar CSV</button>
+        
+        <div style="display: flex; gap: 10px;">
+          <button class="btn btn-export" id="exportCsvBtn" title="Exportar historial en CSV">⬇️ Exportar CSV</button>
+          <button class="btn btn-excel" id="exportExcelBtn" style="background: linear-gradient(135deg, #107c41, #185c37); color: white; border: none; border-radius: 8px; padding: 8px 12px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);" title="Exportar historial a Excel">📊 Exportar a Excel</button>
+        </div>
+
       </div>
       <div class="summary-grid">
         <div class="summary-card income-card">
