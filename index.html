@@ -106,6 +106,19 @@
               </div>
             </div>
           </div>
+          <!-- RETIRO DEL GUARDADO - fila completa -->
+          <div class="form-group retiro-row" style="margin-top:10px;">
+            <label class="form-label" for="retiroGuardado" style="color:var(--purple);">
+              🏦 RETIRO DEL GUARDADO
+            </label>
+            <div class="input-wrap" style="border-color:rgba(175,82,222,0.4);">
+              <span class="input-prefix" style="color:var(--purple);">$</span>
+              <input class="form-input" type="number" id="retiroGuardado"
+                name="retiroGuardado" min="0" step="0.01" placeholder="0.00"
+                style="color:var(--purple);" />
+            </div>
+            <span style="font-size:9px;color:var(--purple);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Dinero que sacas del guardado acumulado para gastos</span>
+          </div>
           <div class="section-total expense-total">
             <span>TOTAL EGRESOS</span>
             <span class="total-value expense-value" id="totalEgresos">$ 0.00</span>
@@ -309,6 +322,10 @@
         <div class="edit-form-group">
           <label class="form-label">GASTOS VARIOS ($)</label>
           <input class="edit-input" type="number" id="editGastos" min="0" step="0.01" placeholder="0.00" />
+        </div>
+        <div class="edit-form-group">
+          <label class="form-label" style="color:var(--purple);">🏦 RETIRO GUARDADO ($)</label>
+          <input class="edit-input" type="number" id="editRetiro" min="0" step="0.01" placeholder="0.00" style="border-color:rgba(175,82,222,0.4);" />
         </div>
         <div class="edit-form-group">
           <label class="form-label">FUENTE PROVEEDORES</label>

@@ -8,7 +8,7 @@ db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
 const COL_CIERRES='cierres_caja';
 const COL_AUDIT='cierres_audit';
 const els={
-  cajaChica:document.getElementById('cajaChica'),cajaFuerte:document.getElementById('cajaFuerte'),
+  cajaChica:document.getElementById('cajaChica'),cajaFuerte:document.getElementById('cajaFuerte'),retiroGuardado:document.getElementById('retiroGuardado'),
   transferencias:document.getElementById('transferencias'),pagoProveedores:document.getElementById('pagoProveedores'),
   gastosPersonales:document.getElementById('gastosPersonales'),notas:document.getElementById('notas'),
   totalIngresos:document.getElementById('totalIngresos'),totalEgresos:document.getElementById('totalEgresos'),
@@ -38,7 +38,7 @@ const els={
   editModal:document.getElementById('editModal'),editDate:document.getElementById('editDate'),
   editCaja:document.getElementById('editCaja'),editGuardado:document.getElementById('editGuardado'),
   editTransfer:document.getElementById('editTransfer'),editProveed:document.getElementById('editProveed'),
-  editGastos:document.getElementById('editGastos'),editFuente:document.getElementById('editFuente'),
+  editGastos:document.getElementById('editGastos'),editRetiro:document.getElementById('editRetiro'),editFuente:document.getElementById('editFuente'),
   editNotas:document.getElementById('editNotas'),editCancelBtn:document.getElementById('editCancelBtn'),
   editConfirmBtn:document.getElementById('editConfirmBtn'),
   deleteModal:document.getElementById('deleteModal'),cancelDeleteBtn:document.getElementById('cancelDeleteBtn'),
@@ -60,8 +60,8 @@ setConnStatus(navigator.onLine);
 
 function recalculate(){
   const caja=numVal(els.cajaChica),guardado=numVal(els.cajaFuerte),transfer=numVal(els.transferencias);
-  const proveed=numVal(els.pagoProveedores),gastos=numVal(els.gastosPersonales);
-  const ventas=caja+guardado+transfer,egresos=proveed+gastos,balance=ventas-egresos;
+  const proveed=numVal(els.pagoProveedores),gastos=numVal(els.gastosPersonales),retiro=numVal(els.retiroGuardado);
+  const ventas=caja+guardado+transfer,egresos=proveed+gastos+retiro,balance=ventas-egresos;
   els.totalIngresos.textContent=fmt(ventas);
   els.totalEgresos.textContent=fmt(egresos);
   els.balanceNeto.textContent=fmt(balance);
@@ -98,7 +98,7 @@ function resetConfirmChip(){
 function handleFormSubmit(e){
   e.preventDefault();
   const proveed=numVal(els.pagoProveedores);
-  pendingSaveData={caja:numVal(els.cajaChica),guardado:numVal(els.cajaFuerte),transfer:numVal(els.transferencias),proveed,gastos:numVal(els.gastosPersonales),notas:els.notas.value.trim()};
+  pendingSaveData={caja:numVal(els.cajaChica),guardado:numVal(els.cajaFuerte),transfer:numVal(els.transferencias),proveed,gastos:numVal(els.gastosPersonales),retiro:numVal(els.retiroGuardado),notas:els.notas.value.trim()};
   if(proveed>PROV_THRESHOLD){
     els.providerSourceBody.innerHTML='PAGO A PROVEEDORES: <strong style="color:var(--red)">'+fmt(proveed)+'</strong><br>¿DE QUE FONDO SALDRA?';
     els.providerSourceModal.hidden=false;
@@ -126,10 +126,10 @@ els.confirmSaveCancelBtn.addEventListener('click',()=>{els.confirmSaveModal.hidd
 els.confirmSaveOkBtn.addEventListener('click',()=>{els.confirmSaveModal.hidden=true;doSaveRecord();});
 
 async function doSaveRecord(){
-  const d=pendingSaveData,ventas=d.caja+d.guardado+d.transfer,egresos=d.proveed+d.gastos;
+  const d=pendingSaveData,retiro=d.retiro||0,ventas=d.caja+d.guardado+d.transfer,egresos=d.proveed+d.gastos+retiro;
   const guardadoNeto=pendingSource==='guardado'?Math.max(0,d.guardado-d.proveed):d.guardado;
   const record={createdAt:new Date().toISOString(),savedAt:firebase.firestore.FieldValue.serverTimestamp(),ventasEfectivo:0,
-    cajaChica:d.caja,cajaFuerte:d.guardado,cajaFuerteNeto:guardadoNeto,transferencias:d.transfer,
+    cajaChica:d.caja,cajaFuerte:d.guardado,cajaFuerteNeto:guardadoNeto,retiroGuardado:retiro,transferencias:d.transfer,
     pagoProveedores:d.proveed,gastosPersonales:d.gastos,fuenteProveedores:pendingSource,
     totalIngresos:ventas,totalEgresos:egresos,ventasDia:ventas,guardadoNeto,balanceNeto:ventas-egresos,notas:d.notas};
   try{
@@ -162,7 +162,7 @@ function showBalanceResultModal(record){
 els.balanceOkBtn.addEventListener('click',()=>{els.balanceResultModal.hidden=true;});
 
 function resetForm(){
-  ['cajaChica','cajaFuerte','transferencias','pagoProveedores','gastosPersonales'].forEach(id=>{els[id].value='';});
+  ['cajaChica','cajaFuerte','retiroGuardado','transferencias','pagoProveedores','gastosPersonales'].forEach(id=>{if(els[id])els[id].value='';});
   els.notas.value='';resetConfirmChip();recalculate();
 }
 
@@ -230,6 +230,7 @@ function openEditModal(id){
   els.editTransfer.value=rec.transferencias!=null?rec.transferencias:'';
   els.editProveed.value=rec.pagoProveedores!=null?rec.pagoProveedores:'';
   els.editGastos.value=rec.gastosPersonales!=null?rec.gastosPersonales:'';
+  els.editRetiro.value=rec.retiroGuardado!=null?rec.retiroGuardado:'';
   els.editFuente.value=rec.fuenteProveedores||'';
   els.editNotas.value=rec.notas||'';
   els.editModal.hidden=false;
@@ -244,7 +245,8 @@ async function saveEditRecord(){
   const transfer=numParse(els.editTransfer.value);
   const proveed=numParse(els.editProveed.value),gastos=numParse(els.editGastos.value);
   const fuente=els.editFuente.value||null;
-  const ventas=caja+guardado+transfer,egresos=proveed+gastos;
+  const retDir=numParse(els.editRetiro?els.editRetiro.value:0);
+  const ventas=caja+guardado+transfer,egresos=proveed+gastos+retDir;
   const guardadoNeto=fuente==='guardado'?Math.max(0,guardado-proveed):guardado;
   const updates={createdAt:new Date(fechaInput).toISOString(),cajaChica:caja,
     cajaFuerte:guardado,cajaFuerteNeto:guardadoNeto,transferencias:transfer,
@@ -277,11 +279,12 @@ els.editCancelBtn.addEventListener('click',function(){els.editModal.hidden=true;
 function renderHistory(){
   const totI=records.reduce((s,r)=>s+(r.totalIngresos||0),0);
   const totE=records.reduce((s,r)=>s+(r.totalEgresos||0),0);
-  // GUARDADO TOTAL = total depositado historico - total retirado del guardado
+  // GUARDADO TOTAL = depositos - retiros de proveedores (guardado) - retiros directos
   const totG=records.reduce(function(s,r){
     var dep=r.cajaFuerte||0;
     var ret=(r.fuenteProveedores==='guardado')?(r.pagoProveedores||0):0;
-    return s+dep-ret;
+    var retDir=r.retiroGuardado||0;
+    return s+dep-ret-retDir;
   },0);
   els.sumIngresos.textContent=fmt(totI);els.sumEgresos.textContent=fmt(totE);
   els.sumBalance.textContent=fmt(totG);els.sumBalance.style.color='#32ade6';
@@ -298,6 +301,8 @@ function renderHistory(){
       // Columna GUARDADO: deposito del dia y retiro del acumulado si aplica
       var gdep=r.cajaFuerte||0;
       var gret=(r.fuenteProveedores==='guardado')?(r.pagoProveedores||0):0;
+      // Retiro directo del guardado (independiente de proveedor)
+      var retDir2=r.retiroGuardado||0;
       var gDisplay;
       if(r.fuenteProveedores==='guardado'){
         if(gdep>0&&gret>0){
@@ -309,6 +314,8 @@ function renderHistory(){
         }else{
           gDisplay=fmt(gdep);
         }
+      }else if(retDir2>0){
+        gDisplay=fmt(gdep)+'<br><span style="color:var(--purple);font-size:11px;font-weight:800">-'+fmt(retDir2)+' SAL.</span>';
       }else{
         gDisplay=fmt(gdep);
       }
