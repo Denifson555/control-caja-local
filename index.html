@@ -1,162 +1,348 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Control de Caja Diaria</title>
-  <meta name="description" content="Sistema de control de flujo de caja diario para locales comerciales. Registra ingresos, egresos y consulta el historial de cierres." />
+  <title>SILVA HERRERA — CONTROL DE CAJA</title>
+  <meta name="description" content="Sistema de control de flujo de caja diario Silva Herrera." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 </head>
 <body>
+  <!-- HEADER -->
   <header class="app-header">
     <div class="header-inner">
       <div class="header-brand">
         <span class="header-icon">💰</span>
         <div>
-          <h1 class="header-title">Control de Caja</h1>
-          <p class="header-subtitle">Flujo Diario</p>
+          <h1 class="header-title">SILVA HERRERA</h1>
+          <p class="header-subtitle">CONTROL DE CAJA DIARIO</p>
         </div>
       </div>
-      <div class="header-date" id="headerDate"></div>
+      <div class="header-right">
+        <span class="conn-dot" id="connDot" title="Estado de conexión"></span>
+        <div class="header-date" id="headerDate"></div>
+      </div>
     </div>
   </header>
+
   <main class="main-layout">
+
+    <!-- ══ PANEL FORMULARIO ══ -->
     <section class="panel panel-form" aria-labelledby="formPanelTitle">
       <div class="panel-header">
-        <h2 id="formPanelTitle" class="panel-title"><span class="panel-title-icon">📋</span> Cierre del Día</h2>
+        <h2 id="formPanelTitle" class="panel-title">
+          <span class="panel-title-icon">📋</span> CIERRE DEL DÍA
+        </h2>
         <span class="panel-badge" id="todayDate"></span>
       </div>
+
       <form id="cashForm" novalidate>
+
+        <!-- VENTAS DEL DÍA -->
         <fieldset class="form-section income-section">
-          <legend class="section-legend income-legend"><span class="legend-dot income-dot"></span> Ingresos</legend>
-          <div class="form-grid">
+          <legend class="section-legend income-legend">
+            <span class="legend-dot income-dot"></span> VENTAS DEL DÍA
+          </legend>
+          <div class="form-grid form-grid-3">
             <div class="form-group">
-              <label class="form-label" for="ventasEfectivo">Ventas en Efectivo</label>
-              <div class="input-wrap"><span class="input-prefix">$</span><input class="form-input income-input" type="number" id="ventasEfectivo" name="ventasEfectivo" min="0" step="0.01" placeholder="0.00" /></div>
+              <label class="form-label" for="cajaChica">CAJA</label>
+              <div class="input-wrap">
+                <span class="input-prefix">$</span>
+                <input class="form-input income-input" type="number" id="cajaChica"
+                  name="cajaChica" min="0" step="0.01" placeholder="0.00" />
+              </div>
             </div>
             <div class="form-group">
-              <label class="form-label" for="cajaChica">Caja Chica</label>
-              <div class="input-wrap"><span class="input-prefix">$</span><input class="form-input income-input" type="number" id="cajaChica" name="cajaChica" min="0" step="0.01" placeholder="0.00" /></div>
+              <label class="form-label" for="cajaFuerte">GUARDADO</label>
+              <div class="input-wrap">
+                <span class="input-prefix">$</span>
+                <input class="form-input income-input" type="number" id="cajaFuerte"
+                  name="cajaFuerte" min="0" step="0.01" placeholder="0.00" />
+              </div>
+              <span style="font-size:9px;color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">⚠️ Billetes $20+</span>
             </div>
             <div class="form-group">
-              <label class="form-label" for="cajaFuerte">Caja Fuerte (Billetes grandes)</label>
-              <div class="input-wrap"><span class="input-prefix">$</span><input class="form-input income-input" type="number" id="cajaFuerte" name="cajaFuerte" min="0" step="0.01" placeholder="0.00" /></div>
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="transferencias">Transferencias</label>
-              <div class="input-wrap"><span class="input-prefix">$</span><input class="form-input income-input" type="number" id="transferencias" name="transferencias" min="0" step="0.01" placeholder="0.00" /></div>
+              <label class="form-label" for="transferencias">TRANSFERENCIAS</label>
+              <div class="input-wrap">
+                <span class="input-prefix">$</span>
+                <input class="form-input income-input" type="number" id="transferencias"
+                  name="transferencias" min="0" step="0.01" placeholder="0.00" />
+              </div>
             </div>
           </div>
           <div class="section-total income-total">
-            <span>Total Ingresos</span>
+            <span>VENTAS TOTALES</span>
             <span class="total-value income-value" id="totalIngresos">$ 0.00</span>
           </div>
         </fieldset>
+
+        <!-- EGRESOS -->
         <fieldset class="form-section expense-section">
-          <legend class="section-legend expense-legend"><span class="legend-dot expense-dot"></span> Egresos</legend>
+          <legend class="section-legend expense-legend">
+            <span class="legend-dot expense-dot"></span> PAGOS Y GASTOS
+          </legend>
           <div class="form-grid">
             <div class="form-group">
-              <label class="form-label" for="pagoProveedores">Pago a Proveedores</label>
-              <div class="input-wrap"><span class="input-prefix">$</span><input class="form-input expense-input" type="number" id="pagoProveedores" name="pagoProveedores" min="0" step="0.01" placeholder="0.00" /></div>
+              <label class="form-label" for="pagoProveedores">PROVEEDORES</label>
+              <div class="input-wrap">
+                <span class="input-prefix">$</span>
+                <input class="form-input expense-input" type="number" id="pagoProveedores"
+                  name="pagoProveedores" min="0" step="0.01" placeholder="0.00" />
+              </div>
+              <span style="font-size:9px;color:var(--text-40);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Si supera $50 se pedirá el origen</span>
             </div>
             <div class="form-group">
-              <label class="form-label" for="gastosPersonales">Gastos Personales</label>
-              <div class="input-wrap"><span class="input-prefix">$</span><input class="form-input expense-input" type="number" id="gastosPersonales" name="gastosPersonales" min="0" step="0.01" placeholder="0.00" /></div>
+              <label class="form-label" for="gastosPersonales">GASTOS VARIOS</label>
+              <div class="input-wrap">
+                <span class="input-prefix">$</span>
+                <input class="form-input expense-input" type="number" id="gastosPersonales"
+                  name="gastosPersonales" min="0" step="0.01" placeholder="0.00" />
+              </div>
             </div>
           </div>
           <div class="section-total expense-total">
-            <span>Total Egresos</span>
+            <span>TOTAL EGRESOS</span>
             <span class="total-value expense-value" id="totalEgresos">$ 0.00</span>
           </div>
         </fieldset>
+
+        <!-- BALANCE -->
         <div class="balance-card" id="balanceCard">
-          <div class="balance-label">Balance Neto del Día</div>
+          <div class="balance-label">BALANCE NETO DEL DÍA</div>
           <div class="balance-amount" id="balanceNeto">$ 0.00</div>
-          <div class="balance-hint" id="balanceHint">Ingresa los montos para calcular</div>
+          <div class="balance-hint" id="balanceHint">INGRESA LOS MONTOS PARA CALCULAR</div>
         </div>
+
+        <!-- NOTAS -->
         <div class="form-group notes-group">
-          <label class="form-label" for="notas">Notas adicionales</label>
-          <textarea class="form-textarea" id="notas" name="notas" rows="3" placeholder="Observaciones, detalles del día, proveedores visitados, etc."></textarea>
+          <label class="form-label" for="notas">NOTAS Y OBSERVACIONES</label>
+          <textarea class="form-textarea" id="notas" name="notas" rows="3"
+            placeholder="Observaciones, proveedores, eventos del día…"></textarea>
         </div>
-        <div class="security-box">
-          <label class="toggle-label" for="verifiedToggle">
-            <input class="toggle-input" type="checkbox" id="verifiedToggle" />
-            <span class="toggle-track"><span class="toggle-thumb"></span></span>
-            <span class="toggle-text">He verificado los montos de hoy</span>
-          </label>
+
+        <!-- CONFIRMACIÓN — reemplaza toggle iOS -->
+        <div class="confirm-chip" id="confirmChip" role="button" tabindex="0"
+             aria-pressed="false" aria-label="¿Cuadró con lo guardado?">
+          <div class="confirm-chip-inner">
+            <span class="confirm-check-icon" id="confirmCheckIcon">○</span>
+            <span class="confirm-chip-text" id="confirmChipText">¿CUADRÓ CON LO GUARDADO?</span>
+          </div>
+          <span class="confirm-chip-hint" id="confirmChipHint">TOCA AQUÍ PARA CONFIRMAR QUE CONTASTE EL GUARDADO</span>
         </div>
+
         <div class="form-actions">
-          <button class="btn btn-secondary" type="button" id="clearFormBtn">🗑️ Limpiar</button>
-          <button class="btn btn-primary" type="submit" id="saveBtn" disabled>💾 Confirmar y Guardar Cierre</button>
+          <button class="btn btn-secondary" type="button" id="clearFormBtn">🗑️ LIMPIAR</button>
+          <button class="btn btn-primary" type="submit" id="saveBtn" disabled>
+            💾 GUARDAR CIERRE
+          </button>
         </div>
       </form>
     </section>
+
+    <!-- ══ PANEL HISTORIAL ══ -->
     <section class="panel panel-history" aria-labelledby="historyPanelTitle">
       <div class="panel-header">
-        <h2 id="historyPanelTitle" class="panel-title"><span class="panel-title-icon">📊</span> Historial</h2>
-        
-        <div style="display: flex; gap: 10px;">
-          <button class="btn btn-export" id="exportCsvBtn" title="Exportar historial en CSV">⬇️ Exportar CSV</button>
-          <button class="btn btn-excel" id="exportExcelBtn" style="background: linear-gradient(135deg, #107c41, #185c37); color: white; border: none; border-radius: 8px; padding: 8px 12px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);" title="Exportar historial a Excel">📊 Exportar a Excel</button>
+        <h2 id="historyPanelTitle" class="panel-title">
+          <span class="panel-title-icon">📊</span> HISTORIAL
+        </h2>
+        <div class="export-btn-group">
+          <button class="btn btn-export" id="exportCsvBtn">⬇️ CSV</button>
+          <button class="btn btn-excel" id="exportExcelBtn">📊 EXCEL</button>
         </div>
-
       </div>
+
       <div class="summary-grid">
         <div class="summary-card income-card">
           <div class="summary-card-icon">📈</div>
-          <div class="summary-card-label">Total Ingresos Históricos</div>
+          <div class="summary-card-label">TOTAL INGRESOS</div>
           <div class="summary-card-value income-value" id="sumIngresos">$ 0.00</div>
         </div>
         <div class="summary-card expense-card">
           <div class="summary-card-icon">📉</div>
-          <div class="summary-card-label">Total Egresos Históricos</div>
+          <div class="summary-card-label">TOTAL EGRESOS</div>
           <div class="summary-card-value expense-value" id="sumEgresos">$ 0.00</div>
         </div>
         <div class="summary-card balance-summary-card">
           <div class="summary-card-icon">🏦</div>
-          <div class="summary-card-label">Balance Global Acumulado</div>
+          <div class="summary-card-label">GUARDADO TOTAL</div>
           <div class="summary-card-value" id="sumBalance">$ 0.00</div>
         </div>
       </div>
+
       <div class="history-table-wrap">
         <div class="history-empty" id="historyEmpty">
           <span class="history-empty-icon">📭</span>
-          <p>Aún no hay cierres registrados.</p>
-          <p>Guarda tu primer cierre del día para comenzar.</p>
+          <p>CONECTANDO CON FIREBASE…</p>
         </div>
         <div class="table-responsive" id="tableWrapper" hidden>
           <table class="history-table" id="historyTable">
             <thead>
               <tr>
-                <th>Fecha</th>
-                <th class="income-col">Ingresos</th>
-                <th class="expense-col">Egresos</th>
-                <th class="balance-col">Balance</th>
-                <th>Notas</th>
-                <th>Acción</th>
+                <th>FECHA</th>
+                <th class="income-col">CAJA</th>
+                <th class="income-col">GUARDADO</th>
+                <th class="income-col">TRANSF.</th>
+                <th class="income-col">VENTAS</th>
+                <th class="expense-col">PROVEED.</th>
+                <th class="expense-col">GASTOS</th>
+                <th class="balance-col">BALANCE</th>
+                <th>FUENTE</th>
+                <th>NOTAS</th>
+                <th>ACCIONES</th>
               </tr>
             </thead>
             <tbody id="historyBody"></tbody>
           </table>
         </div>
       </div>
+
+      <!-- AUDIT LOG -->
+      <div class="audit-section" id="auditSection" style="display:none">
+        <div class="audit-title">🔍 REGISTRO DE MODIFICACIONES</div>
+        <div class="table-responsive">
+          <table class="audit-table">
+            <thead><tr><th>ACCIÓN</th><th>FECHA/HORA</th><th>REGISTRO</th><th>DETALLE</th></tr></thead>
+            <tbody id="auditBody"></tbody>
+          </table>
+        </div>
+      </div>
     </section>
   </main>
+
+  <!-- TOAST -->
   <div class="toast" id="toast" role="alert" aria-live="polite"></div>
-  <div class="modal-overlay" id="deleteModal" hidden>
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-      <div class="modal-icon">⚠️</div>
-      <h3 class="modal-title" id="modalTitle">¿Eliminar este registro?</h3>
-      <p class="modal-body">Esta acción no se puede deshacer.</p>
+
+  <!-- MODAL: CONFIRMAR GUARDADO -->
+  <div class="modal-overlay" id="confirmSaveModal" hidden>
+    <div class="modal">
+      <div class="modal-icon">🔐</div>
+      <div class="modal-title">¿GUARDAR CIERRE?</div>
+      <div class="modal-body">REVISA QUE LOS MONTOS ESTÉN CORRECTOS.</div>
+      <div class="modal-detail-box" id="confirmSaveDetails"></div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" id="cancelDeleteBtn">Cancelar</button>
-        <button class="btn btn-danger" id="confirmDeleteBtn">Sí, eliminar</button>
+        <button class="btn btn-secondary" id="confirmSaveCancelBtn">CANCELAR</button>
+        <button class="btn btn-primary" id="confirmSaveOkBtn">✅ CONFIRMAR</button>
       </div>
     </div>
   </div>
+
+  <!-- MODAL: FUENTE DE PAGO PROVEEDOR -->
+  <div class="modal-overlay" id="providerSourceModal" hidden>
+    <div class="modal">
+      <div class="modal-icon">💸</div>
+      <div class="modal-title">¿DE DÓNDE SALE?</div>
+      <div class="modal-body" id="providerSourceBody">PAGO SUPERA $50. ¿DE QUÉ FONDO?</div>
+      <div class="modal-choice-grid">
+        <button class="modal-choice-btn choice-caja" id="choiceCajaBtn">
+          <span class="choice-icon">💵</span>DE LA CAJA
+        </button>
+        <button class="modal-choice-btn choice-guardado" id="choiceGuardadoBtn">
+          <span class="choice-icon">🏦</span>DEL GUARDADO
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CUADRE DEL DÍA -->
+  <div class="modal-overlay" id="balanceResultModal" hidden>
+    <div class="modal" id="balanceResultModalInner">
+      <div class="modal-icon" id="balanceResultIcon">📊</div>
+      <div class="modal-title" id="balanceResultTitle">CUADRE DEL DÍA</div>
+      <div class="modal-body" id="balanceResultBody"></div>
+      <div class="modal-detail-box" id="balanceResultDetails"></div>
+      <div class="modal-actions">
+        <button class="btn btn-danger" id="balanceEditBtn">✏️ CORREGIR</button>
+        <button class="btn btn-primary" id="balanceOkBtn">✅ CERRAR</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: PIN CONTRASEÑA -->
+  <div class="modal-overlay" id="pinModal" hidden>
+    <div class="modal">
+      <div class="modal-icon">🔑</div>
+      <div class="modal-title">ACCESO RESTRINGIDO</div>
+      <div class="modal-body" id="pinModalBody">ESTA ACCIÓN REQUIERE CONTRASEÑA DE ADMINISTRADOR.</div>
+      <input class="pin-input" type="password" id="pinInput" maxlength="6"
+             placeholder="••••••" autocomplete="off" inputmode="numeric" />
+      <div class="pin-error" id="pinError"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="pinCancelBtn">CANCELAR</button>
+        <button class="btn btn-primary"   id="pinConfirmBtn">🔓 CONFIRMAR</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: EDITAR REGISTRO -->
+  <div class="modal-overlay" id="editModal" hidden>
+    <div class="modal modal-wide">
+      <div class="modal-icon">✏️</div>
+      <div class="modal-title">EDITAR REGISTRO</div>
+      <div class="modal-body" style="font-size:11px;margin-bottom:16px;">MODIFICA LOS CAMPOS Y CONFIRMA. TODOS LOS CAMBIOS QUEDAN EN AUDITORÍA.</div>
+      <div class="edit-form-grid" id="editFormGrid">
+        <div class="edit-form-full edit-form-group">
+          <label class="form-label">FECHA DEL REGISTRO</label>
+          <input class="edit-input" type="datetime-local" id="editDate" />
+        </div>
+        <div class="edit-form-group">
+          <label class="form-label">CAJA ($)</label>
+          <input class="edit-input" type="number" id="editCaja" min="0" step="0.01" placeholder="0.00" />
+        </div>
+        <div class="edit-form-group">
+          <label class="form-label">GUARDADO ($)</label>
+          <input class="edit-input" type="number" id="editGuardado" min="0" step="0.01" placeholder="0.00" />
+        </div>
+        <div class="edit-form-group">
+          <label class="form-label">TRANSFERENCIAS ($)</label>
+          <input class="edit-input" type="number" id="editTransfer" min="0" step="0.01" placeholder="0.00" />
+        </div>
+        <div class="edit-form-group">
+          <label class="form-label">PROVEEDORES ($)</label>
+          <input class="edit-input" type="number" id="editProveed" min="0" step="0.01" placeholder="0.00" />
+        </div>
+        <div class="edit-form-group">
+          <label class="form-label">GASTOS VARIOS ($)</label>
+          <input class="edit-input" type="number" id="editGastos" min="0" step="0.01" placeholder="0.00" />
+        </div>
+        <div class="edit-form-group">
+          <label class="form-label">FUENTE PROVEEDORES</label>
+          <select class="edit-select" id="editFuente">
+            <option value="">— NO APLICA —</option>
+            <option value="caja">CAJA</option>
+            <option value="guardado">GUARDADO</option>
+          </select>
+        </div>
+        <div class="edit-form-full edit-form-group">
+          <label class="form-label">NOTAS</label>
+          <textarea class="edit-input" id="editNotas" rows="2" style="resize:vertical;font-size:12px;font-weight:400"></textarea>
+        </div>
+      </div>
+      <div class="modal-actions" style="margin-top:16px">
+        <button class="btn btn-secondary" id="editCancelBtn">CANCELAR</button>
+        <button class="btn btn-primary"   id="editConfirmBtn">💾 GUARDAR CAMBIOS</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CONFIRMAR ELIMINAR -->
+  <div class="modal-overlay" id="deleteModal" hidden>
+    <div class="modal">
+      <div class="modal-icon">⚠️</div>
+      <div class="modal-title">¿ELIMINAR ESTE REGISTRO?</div>
+      <p class="modal-body">ESTA ACCIÓN QUEDA REGISTRADA EN AUDITORÍA Y NO SE PUEDE DESHACER.</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="cancelDeleteBtn">CANCELAR</button>
+        <button class="btn btn-danger"    id="confirmDeleteBtn">🗑️ ELIMINAR</button>
+      </div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>
