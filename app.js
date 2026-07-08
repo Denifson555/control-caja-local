@@ -277,10 +277,11 @@ els.editCancelBtn.addEventListener('click',function(){els.editModal.hidden=true;
 function renderHistory(){
   const totI=records.reduce((s,r)=>s+(r.totalIngresos||0),0);
   const totE=records.reduce((s,r)=>s+(r.totalEgresos||0),0);
-  const totG=records.reduce((s,r)=>{
-    let g;if(r.cajaFuerteNeto!==undefined){g=r.cajaFuerteNeto;}
-    else if(r.fuenteProveedores==='guardado'){g=Math.max(0,(r.cajaFuerte||0)-(r.pagoProveedores||0));}
-    else{g=r.cajaFuerte||0;}return s+g;
+  // GUARDADO TOTAL = total depositado historico - total retirado del guardado
+  const totG=records.reduce(function(s,r){
+    var dep=r.cajaFuerte||0;
+    var ret=(r.fuenteProveedores==='guardado')?(r.pagoProveedores||0):0;
+    return s+dep-ret;
   },0);
   els.sumIngresos.textContent=fmt(totI);els.sumEgresos.textContent=fmt(totE);
   els.sumBalance.textContent=fmt(totG);els.sumBalance.style.color='#32ade6';
@@ -294,10 +295,23 @@ function renderHistory(){
       const balClass=r.balanceNeto>=0?'positive':'negative';
       const srcLabel=r.fuenteProveedores==='caja'?'<span class="source-badge source-caja">CAJA</span>':r.fuenteProveedores==='guardado'?'<span class="source-badge source-guardado">GUARDADO</span>':'<span style="color:var(--text-40);font-size:10px">—</span>';
       const ventas=r.totalIngresos||((r.cajaChica||0)+(r.cajaFuerte||0)+(r.transferencias||0));
-      const gNeto=r.cajaFuerteNeto!==undefined?r.cajaFuerteNeto:(r.fuenteProveedores==='guardado'?Math.max(0,(r.cajaFuerte||0)-(r.pagoProveedores||0)):(r.cajaFuerte||0));
-      const gDisplay=r.fuenteProveedores==='guardado'
-        ?'<span style="text-decoration:line-through;opacity:.5;font-size:10px">'+fmt(r.cajaFuerte||0)+'</span><br><span style="color:var(--orange);font-size:12px;font-weight:900">'+fmt(gNeto)+'</span>'
-        :fmt(r.cajaFuerte||0);
+      // Columna GUARDADO: deposito del dia y retiro del acumulado si aplica
+      var gdep=r.cajaFuerte||0;
+      var gret=(r.fuenteProveedores==='guardado')?(r.pagoProveedores||0):0;
+      var gDisplay;
+      if(r.fuenteProveedores==='guardado'){
+        if(gdep>0&&gret>0){
+          gDisplay='<span style="color:var(--green-text);font-weight:700">+'+fmt(gdep)+'</span><br>'
+            +'<span style="color:var(--red-text);font-size:11px;font-weight:800">-'+fmt(gret)+' RET.</span>';
+        }else if(gret>0){
+          gDisplay='<span style="color:var(--red-text);font-weight:800">-'+fmt(gret)+'</span>'
+            +'<br><span style="font-size:9px;color:var(--t4)">RETIRO DEL GUARDADO</span>';
+        }else{
+          gDisplay=fmt(gdep);
+        }
+      }else{
+        gDisplay=fmt(gdep);
+      }
       const editMark=r.editedAt?'<span style="font-size:9px;color:var(--orange);display:block">✏️ EDITADO</span>':'';
       tr.innerHTML='<td class="td-date">'+fmtDate(r.createdAt)+editMark+'</td>'+
         '<td class="td-income">'+fmt(r.cajaChica)+'</td>'+
