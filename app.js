@@ -204,47 +204,13 @@ function requestDelete(id){showPinModal({type:'delete',id},'INGRESA LA CONTRASEN
 async function executeDelete(id){
   const rec=records.find(r=>r.id===id);
   try{
-    await db.collection(COL_AUDIT).add({action:'ELIMINACION',timestamp:firebase.firestore.FieldValue.serverTimestamp(),
-      recordId:id,recordDate:rec?.createdAt||'',
-      oldValues:rec?{totalIngresos:rec.totalIngresos,balanceNeto:rec.balanceNeto,cajaFuerte:rec.cajaFuerte,createdAt:rec.createdAt,notas:rec.notas}:{},
-      newValues:null});
     await db.collection(COL_CIERRES).doc(id).delete();
-    showToast('REGISTRO ELIMINADO Y AUDITADO','error');
-  }catch(err){console.error(err);showToast('ERROR AL ELIMINAR — VERIFICA CONEXION','error');}
-}
-
-function requestEdit(id){showPinModal({type:'edit',id},'INGRESA LA CONTRASENA PARA EDITAR. PUEDES CAMBIAR LA FECHA SI LO OLVIDASTE AYER.');}
-function openEditModal(id){
-  const rec=records.find(r=>r.id===id);
-  if(!rec){showToast('REGISTRO NO ENCONTRADO','warn');return;}
-  pendingEditId=id;
-  els.editDate.value=toDatetimeLocal(rec.createdAt);
-  els.editCaja.value=rec.cajaChica??'';els.editGuardado.value=rec.cajaFuerte??'';
-  els.editTransfer.value=rec.transferencias??'';els.editProveed.value=rec.pagoProveedores??'';
-  els.editGastos.value=rec.gastosPersonales??'';els.editFuente.value=rec.fuenteProveedores||'';
-  els.editNotas.value=rec.notas||'';
-  els.editModal.hidden=false;
-}
-async function saveEditRecord(){
-  if(!pendingEditId)return;
-  const rec=records.find(r=>r.id===pendingEditId);if(!rec)return;
-  const fechaInput=els.editDate.value;
-  if(!fechaInput){showToast('DEBES INGRESAR UNA FECHA VALIDA','warn');return;}
-  const caja=numParse(els.editCaja.value),guardado=numParse(els.editGuardado.value),transfer=numParse(els.editTransfer.value);
-  const proveed=numParse(els.editProveed.value),gastos=numParse(els.editGastos.value),fuente=els.editFuente.value||null;
-  const ventas=caja+guardado+transfer,egresos=proveed+gastos;
-  const guardadoNeto=fuente==='guardado'?Math.max(0,guardado-proveed):guardado;
-  const updates={
-    createdAt:new Date(fechaInput).toISOString(),cajaChica:caja,cajaFuerte:guardado,cajaFuerteNeto:guardadoNeto,
-    transferencias:transfer,pagoProveedores:proveed,gastosPersonales:gastos,fuenteProveedores:fuente,
-    totalIngresos:ventas,totalEgresos:egresos,ventasDia:ventas,guardadoNeto,balanceNeto:ventas-egresos,
-    notas:els.editNotas.value.trim(),editedAt:firebase.firestore.FieldValue.serverTimestamp()
-  };
-  try{
-    await db.collection(COL_AUDIT).add({action:'EDICION',timestamp:firebase.firestore.FieldValue.serverTimestamp(),
-      recordId:pendingEditId,recordDate:rec.createdAt,
-      oldValues:{totalIngresos:rec.totalIngresos,balanceNeto:rec.balanceNeto,cajaFuerte:rec.cajaFuerte,createdAt:rec.createdAt},
-      newValues:{totalIngresos:ventas,balanceNeto:ventas-egresos,cajaFuerte:guardado,createdAt:updates.createdAt}});
+    showToast('REGISTRO ELIMINADO','error');
+    db.collection(COL_AUDIT).add({action:'ELIMINACION',timestamp:firebase.firestore.FieldValue.serverTimestamp(),recordId:id,recordDate:rec?.createdAt||'',oldValues:rec?{totalIngresos:rec.totalIngresos,balanceNeto:rec.balanceNeto,cajaFuerte:rec.cajaFuerte,createdAt:rec.createdAt,notas:rec.notas}:{},newValues:null}).catch(e=>console.warn('Audit:',e));
+  }catch(err){
+    console.error(err);
+    if(err.code==='permission-denied'){showToast('SIN PERMISO — ACTUALIZA REGLAS EN FIREBASE CONSOLE','error');}else{showToast('ERROR AL ELIMINAR — VERIFICA CONEXION','error');}}
+});
     await db.collection(COL_CIERRES).doc(pendingEditId).update(updates);
     els.editModal.hidden=true;pendingEditId=null;
     showToast('REGISTRO ACTUALIZADO EN LA NUBE','success');
@@ -262,7 +228,7 @@ function renderHistory(){
     else{g=r.cajaFuerte||0;}return s+g;
   },0);
   els.sumIngresos.textContent=fmt(totI);els.sumEgresos.textContent=fmt(totE);
-  els.sumBalance.textContent=fmt(totG);els.sumBalance.style.color='var(--cyan)';
+  els.sumBalance.textContent=fmt(totG);els.sumBalance.style.color='#32ade6';
   if(records.length===0){
     els.historyEmpty.hidden=false;els.tableWrapper.hidden=true;
     const p=els.historyEmpty.querySelector('p');if(p)p.textContent='AUN NO HAY REGISTROS.';
@@ -275,9 +241,9 @@ function renderHistory(){
       const ventas=r.totalIngresos||((r.cajaChica||0)+(r.cajaFuerte||0)+(r.transferencias||0));
       const gNeto=r.cajaFuerteNeto!==undefined?r.cajaFuerteNeto:(r.fuenteProveedores==='guardado'?Math.max(0,(r.cajaFuerte||0)-(r.pagoProveedores||0)):(r.cajaFuerte||0));
       const gDisplay=r.fuenteProveedores==='guardado'
-        ?'<span style="text-decoration:line-through;opacity:.5;font-size:10px">'+fmt(r.cajaFuerte||0)+'</span><br><span style="color:var(--gold);font-size:12px;font-weight:900">'+fmt(gNeto)+'</span>'
+        ?'<span style="text-decoration:line-through;opacity:.5;font-size:10px">'+fmt(r.cajaFuerte||0)+'</span><br><span style="color:var(--orange);font-size:12px;font-weight:900">'+fmt(gNeto)+'</span>'
         :fmt(r.cajaFuerte||0);
-      const editMark=r.editedAt?'<span style="font-size:9px;color:var(--gold);display:block">✏️ EDITADO</span>':'';
+      const editMark=r.editedAt?'<span style="font-size:9px;color:var(--orange);display:block">✏️ EDITADO</span>':'';
       tr.innerHTML='<td class="td-date">'+fmtDate(r.createdAt)+editMark+'</td>'+
         '<td class="td-income">'+fmt(r.cajaChica)+'</td>'+
         '<td class="td-income">'+gDisplay+'</td>'+
