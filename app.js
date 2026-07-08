@@ -206,18 +206,73 @@ async function executeDelete(id){
   try{
     await db.collection(COL_CIERRES).doc(id).delete();
     showToast('REGISTRO ELIMINADO','error');
-    db.collection(COL_AUDIT).add({action:'ELIMINACION',timestamp:firebase.firestore.FieldValue.serverTimestamp(),recordId:id,recordDate:rec?.createdAt||'',oldValues:rec?{totalIngresos:rec.totalIngresos,balanceNeto:rec.balanceNeto,cajaFuerte:rec.cajaFuerte,createdAt:rec.createdAt,notas:rec.notas}:{},newValues:null}).catch(e=>console.warn('Audit:',e));
+    db.collection(COL_AUDIT).add({action:'ELIMINACION',
+      timestamp:firebase.firestore.FieldValue.serverTimestamp(),
+      recordId:id,recordDate:(rec&&rec.createdAt)||'',
+      oldValues:rec?{totalIngresos:rec.totalIngresos,balanceNeto:rec.balanceNeto,
+        cajaFuerte:rec.cajaFuerte,createdAt:rec.createdAt,notas:rec.notas}:{},
+      newValues:null
+    }).catch(function(e){console.warn('Audit:',e);});
   }catch(err){
     console.error(err);
-    if(err.code==='permission-denied'){showToast('SIN PERMISO — ACTUALIZA REGLAS EN FIREBASE CONSOLE','error');}else{showToast('ERROR AL ELIMINAR — VERIFICA CONEXION','error');}}
-});
+    if(err.code==='permission-denied'){showToast('SIN PERMISO - ACTUALIZA REGLAS FIREBASE','error');}
+    else{showToast('ERROR AL ELIMINAR - VERIFICA CONEXION','error');}
+  }
+}
+function requestEdit(id){showPinModal({type:'edit',id},'INGRESA LA CONTRASENA PARA EDITAR.');}
+function openEditModal(id){
+  const rec=records.find(r=>r.id===id);
+  if(!rec){showToast('REGISTRO NO ENCONTRADO','warn');return;}
+  pendingEditId=id;
+  els.editDate.value=toDatetimeLocal(rec.createdAt);
+  els.editCaja.value=rec.cajaChica!=null?rec.cajaChica:'';
+  els.editGuardado.value=rec.cajaFuerte!=null?rec.cajaFuerte:'';
+  els.editTransfer.value=rec.transferencias!=null?rec.transferencias:'';
+  els.editProveed.value=rec.pagoProveedores!=null?rec.pagoProveedores:'';
+  els.editGastos.value=rec.gastosPersonales!=null?rec.gastosPersonales:'';
+  els.editFuente.value=rec.fuenteProveedores||'';
+  els.editNotas.value=rec.notas||'';
+  els.editModal.hidden=false;
+}
+async function saveEditRecord(){
+  if(!pendingEditId)return;
+  const rec=records.find(r=>r.id===pendingEditId);
+  if(!rec)return;
+  const fechaInput=els.editDate.value;
+  if(!fechaInput){showToast('DEBES INGRESAR FECHA VALIDA','warn');return;}
+  const caja=numParse(els.editCaja.value),guardado=numParse(els.editGuardado.value);
+  const transfer=numParse(els.editTransfer.value);
+  const proveed=numParse(els.editProveed.value),gastos=numParse(els.editGastos.value);
+  const fuente=els.editFuente.value||null;
+  const ventas=caja+guardado+transfer,egresos=proveed+gastos;
+  const guardadoNeto=fuente==='guardado'?Math.max(0,guardado-proveed):guardado;
+  const updates={createdAt:new Date(fechaInput).toISOString(),cajaChica:caja,
+    cajaFuerte:guardado,cajaFuerteNeto:guardadoNeto,transferencias:transfer,
+    pagoProveedores:proveed,gastosPersonales:gastos,fuenteProveedores:fuente,
+    totalIngresos:ventas,totalEgresos:egresos,ventasDia:ventas,guardadoNeto:guardadoNeto,
+    balanceNeto:ventas-egresos,notas:els.editNotas.value.trim(),
+    editedAt:firebase.firestore.FieldValue.serverTimestamp()};
+  try{
     await db.collection(COL_CIERRES).doc(pendingEditId).update(updates);
-    els.editModal.hidden=true;pendingEditId=null;
+    els.editModal.hidden=true;
+    const eid=pendingEditId;pendingEditId=null;
     showToast('REGISTRO ACTUALIZADO EN LA NUBE','success');
-  }catch(err){console.error(err);showToast('ERROR AL ACTUALIZAR — VERIFICA CONEXION','error');}
+    db.collection(COL_AUDIT).add({action:'EDICION',
+      timestamp:firebase.firestore.FieldValue.serverTimestamp(),
+      recordId:eid,recordDate:rec.createdAt,
+      oldValues:{totalIngresos:rec.totalIngresos,balanceNeto:rec.balanceNeto,
+        cajaFuerte:rec.cajaFuerte,createdAt:rec.createdAt},
+      newValues:{totalIngresos:ventas,balanceNeto:ventas-egresos,
+        cajaFuerte:guardado,createdAt:updates.createdAt}
+    }).catch(function(e){console.warn('Audit:',e);});
+  }catch(err){
+    console.error(err);
+    if(err.code==='permission-denied'){showToast('SIN PERMISO - ACTUALIZA REGLAS FIREBASE','error');}
+    else{showToast('ERROR AL ACTUALIZAR - VERIFICA CONEXION','error');}
+  }
 }
 els.editConfirmBtn.addEventListener('click',saveEditRecord);
-els.editCancelBtn.addEventListener('click',()=>{els.editModal.hidden=true;pendingEditId=null;});
+els.editCancelBtn.addEventListener('click',function(){els.editModal.hidden=true;pendingEditId=null;});
 
 function renderHistory(){
   const totI=records.reduce((s,r)=>s+(r.totalIngresos||0),0);
